@@ -19,7 +19,8 @@ var rxCharacteristic : CBCharacteristic?
 var peripheralUARTMonitor : CBPeripheral?
 var characteristicASCIIValue = NSString()
 var turn:Float = 0.5
-var speed = 0.5
+var speed:Float = 0.5
+var timer: Timer?
 var ipaddress = ""
 
 class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate{
@@ -28,54 +29,99 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     @IBOutlet weak var mWebView: WKWebView!
     @IBOutlet weak var ProgressTurn: UIProgressView!
     @IBOutlet weak var ProgressSpeed: UIProgressView!
-    @IBAction func btnLeftAction(_ sender: Any) {
-        turn = turn - 0.1
-        if (turn < 0){
-            turn = 0
-        }
-       ProgressTurn.setProgress(turn, animated: true)
-        writeValue(data:"\(turn)")
-        print(turn)
-    }
+
+    
     
     @IBOutlet weak var mtxtIPAddress: UITextField!
     @IBAction func mtxtIPAddressAction(_ sender: Any) {
         ipaddress = mtxtIPAddress.text!
     }
-    @IBAction func btnRightAction(_ sender: Any) {
+    
+    @IBAction func btnLeftActionDown(_ sender: Any) {
+        timer = Timer.scheduledTimer(timeInterval: 0.3, target: self, selector: #selector(rapidLeftFire), userInfo: nil, repeats: true)
+    }
+    
+    @IBAction func btnLeftActionUp(_ sender: Any) {
+        timer?.invalidate()
+        turn = 0.5
+        ProgressTurn.setProgress(turn, animated: true)
+        writeValue(data:"\(turn), \(speed)")
+
+    }
+
+    @IBAction func btnRightActionDown(_ sender: Any) {
+        timer = Timer.scheduledTimer(timeInterval: 0.3, target: self, selector: #selector(rapidRightFire), userInfo: nil, repeats: true)
+    }
+    @IBAction func btnRightActionUp(_ sender: Any) {
+        timer?.invalidate()
+        turn = 0.5
+        ProgressTurn.setProgress(turn, animated: true)
+        writeValue(data:"\(turn), \(speed)")
+    }
+    
+    
+    @IBAction func btnUpActionUp(_ sender: Any) {
+        timer?.invalidate()
+        speed = 0.5
+        ProgressSpeed.setProgress(speed, animated: true)
+        writeValue(data:"\(turn), \(speed)")
+
+    }
+    @IBAction func btnUpActionDown(_ sender: Any) {
+        timer = Timer.scheduledTimer(timeInterval: 0.3, target: self, selector: #selector(rapidUpFire), userInfo: nil, repeats: true)
+    }
+
+    @IBAction func btnDownActionDown(_ sender: Any) {
+        timer = Timer.scheduledTimer(timeInterval: 0.3, target: self, selector: #selector(rapidDownFire), userInfo: nil, repeats: true)
+    }
+    @IBAction func btnDownActionUp(_ sender: Any) {
+        timer?.invalidate()
+        speed = 0.5
+        ProgressSpeed.setProgress(speed, animated: true)
+        writeValue(data:"\(turn), \(speed)")
+    }
+
+
+    @objc func rapidLeftFire() {
+        turn = turn - 0.1
+        if (turn < 0){
+            turn = 0
+        }
+        ProgressTurn.setProgress(turn, animated: true)
+         writeValue(data:"\(turn), \(speed)")
+    }
+    
+    @objc func rapidRightFire() {
         turn = turn + 0.1
         if (turn > 1){
             turn = 1
         }
-    
-       ProgressTurn.setProgress(turn, animated: true)
-        writeValue(data:"\(turn)")
-        print(turn)
+        ProgressTurn.setProgress(turn, animated: true)
+        writeValue(data:"\(turn), \(speed)")
     }
     
-    @IBAction func btnUpAction(_ sender: Any) {
-        
-        speed = speed + 0.1
-        if (speed > 1){
-            speed = 1
-        }
-       ProgressSpeed.setProgress(Float(speed), animated: true)
-        writeValue(data:"\(speed)")
-        
-        print(speed)
-    }
-    
-    
-    @IBAction func btnDownAction(_ sender: Any) {
+    @objc func rapidDownFire() {
         speed = speed - 0.1
         if (speed < 0){
             speed = 0
         }
-       ProgressSpeed.setProgress(Float(speed), animated: true)
-        writeValue(data:"\(speed)")
-        print(speed)
+        ProgressSpeed.setProgress(speed, animated: true)
+        writeValue(data:"\(turn), \(speed)")
 
     }
+    
+    @objc func rapidUpFire() {
+        speed = speed + 0.1
+        if (speed > 1){
+            speed = 1
+        }
+        ProgressSpeed.setProgress(speed, animated: true)
+        writeValue(data:"\(turn), \(speed)")
+
+    }
+    
+
+    
     var centralManager: CBCentralManager?
 //    var peripheralUARTMonitor: CBPeripheral?
     
@@ -93,9 +139,12 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         
         }
         else{
-            centralManager?.cancelPeripheralConnection(peripheralUARTMonitor!)
+            if peripheralUARTMonitor != nil {
+                centralManager?.cancelPeripheralConnection(peripheralUARTMonitor!)
+            }
              print("try to  disconnect")
             btnConnect.setTitle("Connect", for: .normal)
+            mBlueDeviceName.text = ""
             connectStatus = false
         }
     }
@@ -199,8 +248,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     // use-case-appropriate action
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         
-        // print("Disconnected!")
-        
+        print("Disconnected!")
         DispatchQueue.main.async { () -> Void in
             
         }
@@ -208,10 +256,11 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         // STEP 16: in this use-case, start scanning
         // for the same peripheral or another, as long
         // as they're HRMs, to come back online
-        centralManager?.scanForPeripherals(withServices: [BLE_UART_Service_CBUUID])
+        //centralManager?.scanForPeripherals(withServices: [BLE_UART_Service_CBUUID])
         
     } // END func centralManager(... didDisconnectPeripheral peripheral
 
+    
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         
@@ -366,9 +415,9 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         let valueString = (data as NSString).data(using: String.Encoding.utf8.rawValue)
         //change the "data" to valueString
         if let peripheralUARTMonitor = peripheralUARTMonitor{
-            if let txCharacteristic = txCharacteristic {
+            if let rxCharacteristic = rxCharacteristic {
                 print("send: \(data)" )
-                peripheralUARTMonitor.writeValue(valueString!, for: txCharacteristic, type: CBCharacteristicWriteType.withResponse)
+                peripheralUARTMonitor.writeValue(valueString!, for: rxCharacteristic, type: CBCharacteristicWriteType.withResponse)
             }
         }
     }
@@ -376,7 +425,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     func writeCharacteristic(val: Int8){
         var val = val
         let ns = NSData(bytes: &val, length: MemoryLayout<Int8>.size)
-        peripheralUARTMonitor!.writeValue(ns as Data, for: txCharacteristic!, type: CBCharacteristicWriteType.withResponse)
+        peripheralUARTMonitor!.writeValue(ns as Data, for: rxCharacteristic!, type: CBCharacteristicWriteType.withResponse)
     }
     
     
